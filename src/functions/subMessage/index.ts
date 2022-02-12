@@ -7,15 +7,7 @@ export const subMessage: AWS['functions'][''] = {
 		{
 			sns: {
 				arn: {
-					'Fn::Join': [
-						':',
-						[
-							'arn:aws:sns',
-							{ Ref: 'AWS::Region' },
-							{ Ref: 'AWS::AccountId' },
-							'test-jhonpedro-sns',
-						],
-					],
+					Ref: 'NotificationsSNS',
 				},
 				topicName: 'test-jhonpedro-sns',
 			},
