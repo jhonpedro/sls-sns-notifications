@@ -1,0 +1,80 @@
+service: message-creator
+frameworkVersion: '3'
+useDotenv: true
+
+provider:
+  name: aws
+  region: us-east-1
+  runtime: nodejs14.x
+  stage: ${opt:stage, 'dev'}
+  apiGateway:
+    minimumCompressionSize: 1024
+    shouldStartNameWithService: true
+  environment:
+    AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1'
+    NODE_OPTIONS: '--enable-source-maps --stack-trace-limit=1000'
+    SNS_MAIN_TOPIC_ARN: ${env:SNS_MAIN_TOPIC_ARN}
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - SNS:Publish
+      Resource: '*'
+
+custom:
+  esbuild:
+    bundle: true
+    minify: false
+    sourcemap: true
+    exclude:
+      - aws-sdk
+      - '@aws-sdk/client-lambda'
+    target: node14
+    define: {}
+    platform: node
+    concurrency: 10
+  serverless-offline:
+    httpPort: 4015
+    lambdaPort: 4016
+  serverless-offline-sns:
+    port: 4002
+    # THIS IS REQUIRED! pls, don't remove
+    debug: true
+  enabled-functions:
+    dev: true
+
+plugins:
+  - serverless-disable-functions
+  - serverless-esbuild
+  - serverless-offline
+  - serverless-offline-sns
+
+functions:
+  pubMessage:
+    handler: src/functions/pubMessage/handler.main
+    events:
+      - http:
+          method: post
+          path: /
+  subMessage:
+    handler: src/functions/subMessage/handler.main
+    events:
+      - sns:
+          arn:
+            Ref: NotificationsSNS
+          topicName: test-jhonpedro-sns
+  subMessageOfflineToSaEast1:
+    handler: src/functions/subMessage/handler.offline
+    # this is from -> serverless-disable-functions
+    enabled: ${self:custom.enabled-functions.${self:provider.stage}, false}
+    events:
+      - sns:
+          arn:
+            Ref: NotificationsSNS
+          topicName: test-jhonpedro-sns
+
+resources:
+  Resources:
+    NotificationsSNS:
+      Type: AWS::SNS::Topic
+      Properties:
+        TopicName: test-jhonpedro-sns
